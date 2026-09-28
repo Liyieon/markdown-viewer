@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="A clean Markdown viewer and editor: live preview, visual formatting, adjustable typography.">
+<title>Markdown Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&family=LXGW+WenKai+TC:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#ECEEF1; --chrome:#F6F7F9; --sheet:#FFFFFF; --ink:#1C1F25; --muted:#5F6673;
+  --line:#D5D9E0; --line-soft:#E6E9ED; --accent:#1F6F78; --accent-ink:#FFFFFF; --accent-soft:#E0EEEF;
+  --mark:#FFF1B8; --code-bg:#F1F3F5; --grid:rgba(31,111,120,.13); --shadow:0 1px 2px rgba(28,31,37,.06),0 8px 28px rgba(28,31,37,.07);
+  --ui:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans TC",monospace;
+  --read-font:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --fs:18px; --lh:1.85; --measure:34; --para:.9; --indent:0em; --align:left;
+  --h1:2.0736em; --h2:1.728em; --h3:1.44em; --h4:1.2em;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#121417; --chrome:#181B1F; --sheet:#1D2025; --ink:#E4E6EA; --muted:#9AA1AC;
+    --line:#30353D; --line-soft:#262A31; --accent:#6FC2C9; --accent-ink:#0F2426; --accent-soft:#1C3336;
+    --mark:#574813; --code-bg:#262A31; --grid:rgba(111,194,201,.14); --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#121417; --chrome:#181B1F; --sheet:#1D2025; --ink:#E4E6EA; --muted:#9AA1AC;
+  --line:#30353D; --line-soft:#262A31; --accent:#6FC2C9; --accent-ink:#0F2426; --accent-soft:#1C3336;
+  --mark:#574813; --code-bg:#262A31; --grid:rgba(111,194,201,.14); --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.25);
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font:14px/1.5 var(--ui);overflow:hidden}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ---------- top bar ---------- */
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--chrome);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-family:"Noto Serif TC",serif;font-weight:700;font-size:18px;letter-spacing:.01em;display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.brand small{font-family:var(--ui);font-weight:400;font-size:12px;letter-spacing:0;color:var(--muted)}
+.filename{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 160px}
+.filename input{border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 8px;min-width:0;width:100%;max-width:280px;font-weight:500}
+.filename input:hover{border-color:var(--line)}
+.filename input:focus{border-color:var(--accent);background:var(--sheet);outline:none}
+.dirty{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.seg{display:inline-flex;background:var(--line-soft);border-radius:8px;padding:2px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);min-height:30px}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08);font-weight:500}
+.actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--sheet);border-radius:7px;padding:5px 11px;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn svg{width:15px;height:15px;flex:none}
+
+/* ---------- format bar ---------- */
+.fmtbar{display:flex;align-items:center;gap:2px;padding:6px 12px;background:var(--chrome);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.fmtbar::-webkit-scrollbar{display:none}
+.fmtbar .sep{width:1px;height:18px;background:var(--line);margin:0 6px;flex:none}
+.fbtn{border:0;background:transparent;min-width:32px;height:32px;padding:0 7px;border-radius:6px;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:13px}
+.fbtn:hover{background:var(--line-soft)}
+.fbtn svg{width:16px;height:16px}
+.fbtn .t{font-family:"Noto Serif TC",serif;font-weight:700}
+.target{margin-left:auto;padding-left:12px;color:var(--muted);font-size:12px;white-space:nowrap;flex:none}
+.target b{color:var(--accent);font-weight:500}
+
+/* ---------- workspace ---------- */
+.work{flex:1;display:flex;min-height:0}
+.pane{min-width:0;min-height:0;display:flex;flex-direction:column}
+.editor-pane{flex:1;background:var(--sheet);border-right:1px solid var(--line)}
+.app[data-view="source"] .editor-pane{border-right:0}
+#src{flex:1;border:0;resize:none;padding:28px max(16px,4%) 40vh;background:transparent;font:13.5px/1.75 var(--mono);tab-size:2;outline:none;color:var(--ink)}
+#src::selection{background:var(--accent-soft)}
+.outline{width:210px;flex:none;border-right:1px solid var(--line);background:var(--chrome);overflow-y:auto;padding:20px 10px 40px}
+.outline h2{font-size:12px;font-weight:500;color:var(--muted);margin:0 8px 8px}
+.outline a{display:block;padding:4px 8px;border-radius:5px;color:var(--ink);text-decoration:none;font-size:13px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.outline a:hover{background:var(--line-soft)}
+.outline a.l2{padding-left:18px}.outline a.l3{padding-left:28px;color:var(--muted)}
+.outline .empty{color:var(--muted);font-size:12px;padding:4px 8px}
+.stage{flex:1;overflow-y:auto;padding:32px 16px 30vh;scroll-behavior:auto}
+.sheet{margin:0 auto;background:var(--sheet);border-radius:4px;box-shadow:var(--shadow);padding:clamp(28px,6vw,64px) clamp(20px,6vw,72px);width:fit-content;max-width:100%;position:relative}
+
+/* the reading column */
+.prose{font-family:var(--read-font);font-size:var(--fs);line-height:var(--lh);width:calc(var(--measure) * 1em);max-width:100%;text-align:var(--align);color:var(--ink);outline:none;overflow-wrap:break-word;
+  font-feature-settings:"palt" 0;text-spacing-trim:space-first}
+.prose.grid{background-image:
+  linear-gradient(to right,var(--grid) 1px,transparent 1px),
+  linear-gradient(to bottom,var(--grid) 1px,transparent 1px);
+  background-size:1em calc(var(--lh) * 1em);background-position:0 0}
+.prose > *:first-child{margin-top:0}
+.prose p{margin:0 0 calc(var(--para) * 1em);text-indent:var(--indent)}
+.prose h1,.prose h2,.prose h3,.prose h4,.prose h5,.prose h6{font-weight:700;line-height:1.3;text-wrap:balance;margin:1.4em 0 .5em;text-indent:0}
+.prose h1{font-size:var(--h1);letter-spacing:.02em;margin-top:0}
+.prose h2{font-size:var(--h2);padding-bottom:.25em;border-bottom:1px solid var(--line-soft)}
+.prose h3{font-size:var(--h3)}.prose h4{font-size:var(--h4)}.prose h5,.prose h6{font-size:1em}
+.prose a{color:var(--accent);text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:1px}
+.prose strong{font-weight:700}
+.prose mark{background:var(--mark);color:inherit;padding:0 .1em}
+.prose ul,.prose ol{margin:0 0 calc(var(--para) * 1em);padding-left:1.6em}
+.prose li{margin:.2em 0}
+.prose li > p{margin:0;text-indent:0}
+.prose li:has(> input[type=checkbox]){list-style:none;margin-left:-1.4em}
+.prose input[type=checkbox]{width:.9em;height:.9em;margin:0 .45em 0 0;vertical-align:-.08em;accent-color:var(--accent);cursor:pointer}
+.prose blockquote{margin:0 0 calc(var(--para) * 1em);padding:.1em 0 .1em 1em;border-left:3px solid var(--accent);color:var(--muted)}
+.prose blockquote p{text-indent:0}
+.prose code{font-family:var(--mono);font-size:.84em;background:var(--code-bg);padding:.12em .35em;border-radius:4px}
+.prose pre{font-family:var(--mono);font-size:.8em;line-height:1.65;background:var(--code-bg);padding:1em 1.2em;border-radius:6px;overflow-x:auto;margin:0 0 calc(var(--para) * 1.2em);text-align:left}
+.prose pre code{background:none;padding:0;font-size:1em}
+.prose hr{border:0;height:1px;background:var(--line);margin:2em 0}
+.prose table{display:block;overflow-x:auto;border-collapse:collapse;margin:0 0 calc(var(--para) * 1em);font-size:.9em;line-height:1.6;max-width:100%}
+.prose th,.prose td{border:1px solid var(--line);padding:.4em .8em;text-align:left;vertical-align:top}
+.prose th{background:var(--code-bg);font-weight:700}
+.prose img{max-width:100%;border-radius:4px}
+
+/* ---------- typeset panel ---------- */
+.panel{width:290px;flex:none;border-left:1px solid var(--line);background:var(--chrome);overflow-y:auto;padding:18px 18px 40px}
+.panel h2{font-size:15px;margin:0 0 2px;font-weight:600}
+.panel .sub{color:var(--muted);font-size:12px;margin:0 0 16px}
+.field{display:grid;gap:6px;margin-bottom:16px}
+.field .row{display:flex;justify-content:space-between;align-items:baseline}
+.field label,.field .lbl{font-size:13px;font-weight:500}
+.field output{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.field input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:24px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--sheet);border-radius:999px;padding:4px 11px;cursor:pointer;font-size:13px;min-height:30px}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:500}
+.chip.face-serif{font-family:"Noto Serif TC",serif}.chip.face-sans{font-family:"Noto Sans TC",sans-serif}.chip.face-kai{font-family:"LXGW WenKai TC",serif}
+.switch{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:500;margin-bottom:12px;cursor:pointer}
+.switch input{width:36px;height:20px;accent-color:var(--accent);cursor:pointer}
+.panel hr{border:0;height:1px;background:var(--line);margin:18px 0}
+.linkbtn{border:0;background:none;color:var(--accent);padding:0;cursor:pointer;font-size:13px;text-decoration:underline;text-underline-offset:.2em}
+
+/* ---------- status bar ---------- */
+.status{display:flex;gap:16px;padding:6px 16px calc(6px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--chrome);color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.status .grow{flex:1}
+
+/* ---------- views ---------- */
+.app[data-view="read"] .editor-pane{display:none}
+.app[data-view="source"] .stage,.app[data-view="source"] .outline{display:none}
+.app[data-view="split"] .outline{display:none}
+.app[data-view="split"] .stage{flex:1}
+.app:not([data-panel="open"]) .panel{display:none}
+
+/* ---------- popover / toast / drop ---------- */
+.pop{position:fixed;z-index:30;background:var(--sheet);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:10px;display:grid;gap:8px;width:min(320px,calc(100vw - 32px))}
+.pop label{font-size:12px;color:var(--muted)}
+.pop input{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--sheet);width:100%}
+.pop .row{display:flex;gap:6px;justify-content:flex-end}
+.toast{position:fixed;left:50%;bottom:48px;transform:translate(-50%,8px);background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:40}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.drop{position:fixed;inset:12px;border:2px dashed var(--accent);border-radius:14px;background:color-mix(in srgb,var(--ground) 88%,transparent);display:grid;place-items:center;z-index:50;font-size:16px;color:var(--accent);font-weight:500;pointer-events:none}
+
+/* ---------- narrow screens ---------- */
+@media (max-width:1100px){ .outline{display:none!important} }
+@media (max-width:760px){
+  .topbar{gap:8px;padding:8px 12px}
+  .brand small{display:none}
+  .filename{order:3;flex-basis:100%}
+  .filename input{max-width:none}
+  .actions .opt{display:none}
+  .app[data-view="split"] .editor-pane{display:none}
+  .seg button[data-view="split"]{display:none}
+  .panel{position:fixed;left:0;right:0;bottom:0;width:auto;max-height:70vh;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.15);z-index:20;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+  .stage{padding:16px 12px 40vh}
+  .status .opt{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .toast{transition:none} }
+</style>
+</head>
+<body>
+<div class="app" id="app" data-view="split">
+  <header class="topbar">
+    <div class="brand">Markdown Viewer</div>
+    <div class="filename">
+      <input id="fname" value="使用說明.md" aria-label="檔名" spellcheck="false">
+      <span class="dirty" id="dirty" hidden title="有尚未下載的修改"></span>
+    </div>
+    <div class="seg" role="group" aria-label="檢視模式">
+      <button data-view="read" aria-pressed="false">閱讀</button>
+      <button data-view="split" aria-pressed="true">分割</button>
+      <button data-view="source" aria-pressed="false">原始碼</button>
+    </div>
+    <div class="actions">
+      <button class="btn" id="openBtn" title="開啟 .md 檔（也可以直接拖曳檔案進來）">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4.5V12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3.5H3a1 1 0 0 0-1 1Z"/></svg>開啟</button>
+      <button class="btn" id="panelBtn" aria-pressed="false" title="調整閱讀排版">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 3h10M8 3v10M5.5 13h5"/></svg>排版</button>
+      <button class="btn opt" id="copyBtn" title="複製全部 Markdown">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="8.5" height="8.5" rx="1.2"/><path d="M11 5V3.2A1.2 1.2 0 0 0 9.8 2H3.2A1.2 1.2 0 0 0 2 3.2v6.6A1.2 1.2 0 0 0 3.2 11H5"/></svg>複製</button>
+      <button class="btn primary" id="saveBtn" title="下載為 .md 檔（Ctrl/⌘ + S）">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10"/></svg>下載 .md</button>
+    </div>
+    <input type="file" id="fileInput" accept=".md,.markdown,.mdown,.txt,text/markdown,text/plain" hidden>
+  </header>
+
+  <nav class="fmtbar" aria-label="文字格式">
+    <button class="fbtn" data-cmd="h1" title="標題 1（Ctrl/⌘+Alt+1）"><span class="t">H1</span></button>
+    <button class="fbtn" data-cmd="h2" title="標題 2（Ctrl/⌘+Alt+2）"><span class="t">H2</span></button>
+    <button class="fbtn" data-cmd="h3" title="標題 3（Ctrl/⌘+Alt+3）"><span class="t">H3</span></button>
+    <button class="fbtn" data-cmd="p" title="內文段落"><span class="t" style="font-weight:400">¶</span></button>
+    <span class="sep"></span>
+    <button class="fbtn" data-cmd="bold" title="粗體（Ctrl/⌘+B）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 2.8h4.2a2.6 2.6 0 0 1 0 5.2H4.5zM4.5 8h5a2.6 2.6 0 0 1 0 5.2h-5z"/></svg></button>
+    <button class="fbtn" data-cmd="italic" title="斜體（Ctrl/⌘+I）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2.8H6.5M9.5 13.2H6M8.8 2.8 7.2 13.2"/></svg></button>
+    <button class="fbtn" data-cmd="strike" title="刪除線"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 8h11M11 4.5c-.4-1-1.5-1.7-3-1.7-1.8 0-3 .9-3 2.2M5 11.3c.4 1.1 1.6 1.9 3.2 1.9 1.9 0 3.1-.9 3.1-2.3"/></svg></button>
+    <button class="fbtn" data-cmd="code" title="行內程式碼"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4.5 2 8l3.5 3.5M10.5 4.5 14 8l-3.5 3.5"/></svg></button>
+    <button class="fbtn" data-cmd="link" title="連結（Ctrl/⌘+K）"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.7.7M9.2 6.8a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.7-.7"/></svg></button>
+    <span class="sep"></span>
+    <button class="fbtn" data-cmd="ul" title="項目清單"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4h8M6 8h8M6 12h8"/><circle cx="2.8" cy="4" r=".9" fill="currentColor"/><circle cx="2.8" cy="8" r=".9" fill="currentColor"/><circle cx="2.8" cy="12" r=".9" fill="currentColor"/></svg></button>
+    <button class="fbtn" data-cmd="ol" title="編號清單"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 4h7.5M6.5 8h7.5M6.5 12h7.5"/><text x="1.2" y="5.6" font-size="4.6" fill="currentColor" stroke="none" font-family="sans-serif">1</text><text x="1.2" y="9.6" font-size="4.6" fill="currentColor" stroke="none" font-family="sans-serif">2</text><text x="1.2" y="13.6" font-size="4.6" fill="currentColor" stroke="none" font-family="sans-serif">3</text></svg></button>
+    <button class="fbtn" data-cmd="task" title="待辦清單"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2.5" width="11" height="11" rx="2"/><path d="m4.8 8 2 2 3.7-4"/></svg></button>
+    <button class="fbtn" data-cmd="quote" title="引言"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v10M6.5 5h7M6.5 8h7M6.5 11h5"/></svg></button>
+    <button class="fbtn" data-cmd="codeblock" title="程式碼區塊"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.6"/><path d="m5.3 6.5-1.6 1.5 1.6 1.5M8 10.5h3"/></svg></button>
+    <button class="fbtn" data-cmd="table" title="插入表格"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2.5" width="12" height="11" rx="1.4"/><path d="M2 6.3h12M2 9.9h12M6.3 2.5v11"/></svg></button>
+    <button class="fbtn" data-cmd="hr" title="分隔線"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8h12"/><path d="M4 4.5h8M4 11.5h8" stroke-opacity=".35"/></svg></button>
+    <span class="target" id="target">套用在 <b>原始碼</b></span>
+  </nav>
+
+  <main class="work">
+    <section class="pane editor-pane" aria-label="Markdown 原始碼">
+      <textarea id="src" spellcheck="false" aria-label="Markdown 原始碼"></textarea>
+    </section>
+    <aside class="outline" id="outline" aria-label="大綱"><h2>大綱</h2><div id="toc"></div></aside>
+    <section class="pane stage" id="stage" aria-label="預覽">
+      <article class="sheet"><div class="prose" id="view" contenteditable="true" spellcheck="false"></div></article>
+    </section>
+
+    <aside class="panel" id="panel" aria-label="排版設定">
+      <h2>排版</h2>
+      <p class="sub">只影響預覽與匯出的 HTML，不會改動 Markdown 內容。</p>
+
+      <div class="field"><span class="lbl">字體</span>
+        <div class="chips" data-set="face">
+          <button class="chip face-serif" data-v="serif">明體</button>
+          <button class="chip face-sans" data-v="sans">黑體</button>
+          <button class="chip face-kai" data-v="kai">楷體</button>
+        </div>
+      </div>
+      <div class="field"><div class="row"><label for="fs">字級</label><output id="fsOut"></output></div>
+        <input type="range" id="fs" min="14" max="24" step="1"></div>
+      <div class="field"><div class="row"><label for="lh">行高</label><output id="lhOut"></output></div>
+        <input type="range" id="lh" min="1.4" max="2.4" step="0.05"></div>
+      <div class="field"><div class="row"><label for="measure">每行字數</label><output id="measureOut"></output></div>
+        <input type="range" id="measure" min="20" max="50" step="1"></div>
+      <div class="field"><div class="row"><label for="para">段落間距</label><output id="paraOut"></output></div>
+        <input type="range" id="para" min="0" max="2" step="0.1"></div>
+      <div class="field"><span class="lbl">標題大小</span>
+        <div class="chips" data-set="scale">
+          <button class="chip" data-v="1.125">緊湊</button>
+          <button class="chip" data-v="1.2">標準</button>
+          <button class="chip" data-v="1.3">醒目</button>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">對齊</span>
+        <div class="chips" data-set="align">
+          <button class="chip" data-v="left">靠左</button>
+          <button class="chip" data-v="justify">左右對齊</button>
+        </div>
+      </div>
+      <label class="switch" for="indent">段首縮排兩字 <input type="checkbox" id="indent"></label>
+      <label class="switch" for="grid">顯示稿紙格線 <input type="checkbox" id="grid"></label>
+      <hr>
+      <div class="field"><span class="lbl">外觀</span>
+        <div class="chips" data-set="theme">
+          <button class="chip" data-v="auto">跟隨系統</button>
+          <button class="chip" data-v="light">淺色</button>
+          <button class="chip" data-v="dark">深色</button>
+        </div>
+      </div>
+      <hr>
+      <div class="field">
+        <button class="btn" id="exportBtn" style="justify-self:start">匯出排版後的 HTML</button>
+        <button class="linkbtn" id="resetBtn" style="justify-self:start">還原預設排版</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="status">
+    <span id="stWords"></span><span id="stTime"></span><span class="opt" id="stLines"></span>
+    <span class="grow"></span><span class="opt" id="stCursor"></span><span id="stSaved"></span>
+  </footer>
+</div>
+
+<div class="pop" id="linkPop" hidden role="dialog" aria-label="插入連結">
+  <label for="linkText">顯示文字</label><input id="linkText">
+  <label for="linkUrl">網址</label><input id="linkUrl" placeholder="https://">
+  <div class="row"><button class="btn" id="linkCancel">取消</button><button class="btn primary" id="linkOk">插入連結</button></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="drop" id="drop" hidden>放開以開啟 Markdown 檔</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown@7.1.2/lib/turndown.browser.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/turndown-plugin-gfm@1.0.2/dist/turndown-plugin-gfm.js"></script>
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const app = $('#app'), src = $('#src'), view = $('#view'), stage = $('#stage');
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem('mdv:'+k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem('mdv:'+k, JSON.stringify(v)); }catch(e){} }
+};
+
+const SAMPLE = `# Markdown Viewer 使用說明
+
+這是一份**範例文件**，第一次打開時會先顯示它。把自己的 \`.md\` 檔拖進視窗，或按右上角的「開啟」，就會換成你的內容。
+
+## 三種檢視
+
+- **閱讀**：只看排好的版面，左側有大綱可以跳段落。
+- **分割**：左邊寫 Markdown，右邊即時預覽，兩邊捲動會對齊。
+- **原始碼**：專心改文字。
+
+> 預覽也能直接點進去修改。在預覽裡打字、加粗或換標題，左邊的 Markdown 會跟著更新。
+
+## 調整文字格式
+
+上方的工具列會套用在你最後點選的地方：點原始碼就改 Markdown 語法，點預覽就直接改版面。常用的快捷鍵：
+
+| 動作 | Windows | macOS |
+| --- | --- | --- |
+| 粗體 | Ctrl + B | ⌘ + B |
+| 斜體 | Ctrl + I | ⌘ + I |
+| 連結 | Ctrl + K | ⌘ + K |
+| 標題 1–3 | Ctrl + Alt + 1–3 | ⌘ + ⌥ + 1–3 |
+| 下載 .md | Ctrl + S | ⌘ + S |
+
+## 排版
+
+按「排版」可以換字體、字級、行高、每行字數與段落間距。打開「稿紙格線」會在預覽上畫出一格一字的方格，方便抓行寬。
+
+### 待辦範例
+
+- [x] 開啟一份 Markdown
+- [x] 調整成順眼的行寬
+- [ ] 下載修改後的檔案
+
+### 程式碼範例
+
+\`\`\`js
+// 在 TouchDesigner 的 Script CHOP 裡讀取數值
+const value = op('noise1')['chan1'].eval();
+\`\`\`
+
+---
+
+修改會自動暫存在這個瀏覽器裡，下次打開還在。要帶走檔案，請按「下載 .md」。
+`;
+
+/* ---------- markdown <-> html ---------- */
+marked.setOptions({ gfm:true, breaks:false });
+const td = new TurndownService({ headingStyle:'atx', bulletListMarker:'-', codeBlockStyle:'fenced', emDelimiter:'*', strongDelimiter:'**', hr:'---' });
+if (window.turndownPluginGfm) td.use(turndownPluginGfm.gfm);
+td.addRule('tightListItem',{ filter:'li', replacement(content, node, opt){
+  content = content.replace(/^\n+/,'').replace(/\n+$/,'\n').replace(/\n/gm,'\n   ');
+  let prefix = opt.bulletListMarker + ' ';
+  const parent = node.parentNode;
+  if(parent && parent.nodeName==='OL'){ const st = parent.getAttribute('start'); const i = Array.prototype.indexOf.call(parent.children,node); prefix = (st ? +st+i : i+1) + '. '; }
+  return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
+}});
+td.addRule('mark',{ filter:'mark', replacement:c=>'=='+c+'==' });
+
+function mdToHtml(md){
+  const html = marked.parse(md);
+  return DOMPurify.sanitize(html, { ADD_ATTR:['checked'] });
+}
+
+/* ---------- state ---------- */
+let lastTarget = 'editor';        // where the format bar applies
+let savedText = null;             // text at last open/download
+let syncingFromView = false;
+
+function setTarget(t){
+  lastTarget = t;
+  $('#target').innerHTML = '套用在 <b>' + (t==='editor' ? '原始碼' : '預覽') + '</b>';
+}
+
+function render(){
+  view.innerHTML = mdToHtml(src.value);
+  view.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cb.disabled=false; cb.setAttribute('contenteditable','false'); });
+  buildToc(); stats();
+}
+
+function buildToc(){
+  const hs = view.querySelectorAll('h1,h2,h3');
+  const toc = $('#toc'); toc.innerHTML='';
+  if(!hs.length){ toc.innerHTML='<div class="empty">加上 # 標題後，大綱會出現在這裡。</div>'; return; }
+  hs.forEach((h,i)=>{
+    const a=document.createElement('a'); a.href='#'; a.className='l'+h.tagName[1]; a.textContent=h.textContent||'（無標題）';
+    a.addEventListener('click',e=>{ e.preventDefault(); const r=h.getBoundingClientRect(), s=stage.getBoundingClientRect(); stage.scrollTop += r.top - s.top - 24; });
+    toc.appendChild(a);
+  });
+}
+
+function stats(){
+  const t = src.value;
+  const cjk = (t.match(/[㐀-鿿豈-﫿぀-ヿ가-힯]/g)||[]).length;
+  const words = (t.replace(/[㐀-鿿豈-﫿぀-ヿ가-힯]/g,' ').match(/[A-Za-z0-9]+(?:['’\-][A-Za-z0-9]+)*/g)||[]).length;
+  const mins = Math.max(1, Math.round(cjk/400 + words/220));
+  $('#stWords').textContent = (cjk + words).toLocaleString() + ' 字';
+  $('#stTime').textContent = '約 ' + mins + ' 分鐘讀完';
+  $('#stLines').textContent = t.split('\n').length + ' 行';
+  $('#dirty').hidden = savedText === null || t === savedText;
+}
+function cursorInfo(){
+  const before = src.value.slice(0, src.selectionStart).split('\n');
+  $('#stCursor').textContent = '第 ' + before.length + ' 行，第 ' + (before[before.length-1].length+1) + ' 欄';
+}
+
+let draftTimer;
+function persist(){
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(()=>{
+    store.set('doc',{ text:src.value, name:$('#fname').value });
+    $('#stSaved').textContent = '已暫存於此瀏覽器';
+  }, 400);
+}
+
+/* editor -> preview */
+let renderTimer;
+src.addEventListener('input', ()=>{
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(render, 80);
+  persist(); stats();
+});
+['keyup','click','select'].forEach(e=>src.addEventListener(e,cursorInfo));
+src.addEventListener('focus', ()=>setTarget('editor'));
+
+/* preview -> editor */
+let viewTimer;
+function syncFromView(){
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(()=>{
+    view.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cb.checked ? cb.setAttribute('checked','') : cb.removeAttribute('checked'); });
+    src.value = td.turndown(view.innerHTML).replace(/\n{3,}/g,'\n\n') + '\n';
+    buildToc(); stats(); persist();
+  }, 250);
+}
+view.addEventListener('input', syncFromView);
+view.addEventListener('change', e=>{ if(e.target.matches('input[type=checkbox]')) syncFromView(); });
+view.addEventListener('focus', ()=>setTarget('view'));
+view.addEventListener('blur', ()=>{ /* keep target; re-render once to normalise markup */ });
+view.addEventListener('click', e=>{
+  const a = e.target.closest('a');
+  if(a && (e.metaKey || e.ctrlKey)){ window.open(a.href,'_blank','noopener'); }
+});
+view.addEventListener('paste', e=>{
+  // paste as plain text so foreign styling doesn't leak in
+  const text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if(text != null){ e.preventDefault(); document.execCommand('insertText', false, text); }
+});
+
+/* ---------- formatting: markdown side ---------- */
+function replaceSel(text, selStart, selEnd){
+  src.focus();
+  const ok = document.execCommand('insertText', false, text);
+  if(!ok){ src.setRangeText(text); src.dispatchEvent(new Event('input')); }
+  if(selStart != null) src.setSelectionRange(selStart, selEnd);
+}
+function wrapMd(before, after, placeholder){
+  let s = src.selectionStart, e = src.selectionEnd, v = src.value;
+  const sel = v.slice(s,e);
+  // toggle off if already wrapped
+  if(v.slice(s-before.length,s)===before && v.slice(e,e+after.length)===after){
+    src.setSelectionRange(s-before.length, e+after.length);
+    replaceSel(sel, s-before.length, e-before.length); return;
+  }
+  if(sel.startsWith(before) && sel.endsWith(after) && sel.length >= before.length+after.length){
+    const inner = sel.slice(before.length, sel.length-after.length);
+    replaceSel(inner, s, s+inner.length); return;
+  }
+  const body = sel || placeholder;
+  replaceSel(before+body+after, s+before.length, s+before.length+body.length);
+}
+function lineRange(){
+  const v = src.value;
+  const s = v.lastIndexOf('\n', src.selectionStart-1)+1;
+  let e = v.indexOf('\n', src.selectionEnd - (src.selectionEnd>src.selectionStart && v[src.selectionEnd-1]==='\n' ? 1:0));
+  if(e<0) e = v.length;
+  return [s,e];
+}
+function mapLines(fn){
+  const [s,e] = lineRange();
+  const lines = src.value.slice(s,e).split('\n');
+  const out = fn(lines).join('\n');
+  src.setSelectionRange(s,e);
+  replaceSel(out, s, s+out.length);
+}
+const blockRe = /^(\s*)(#{1,6}\s+|>\s?|[-*+]\s+\[[ xX]\]\s+|[-*+]\s+|\d+[.)]\s+)/;
+function setBlock(prefix){ // headings / paragraph
+  mapLines(lines=>lines.map(l=>{
+    const m = l.match(/^(#{1,6})\s+/);
+    const bare = l.replace(/^#{1,6}\s+/,'');
+    if(prefix && m && m[1]+' '===prefix) return bare; // toggle off
+    return (prefix||'') + bare;
+  }));
+}
+function toggleLinePrefix(kind){
+  mapLines(lines=>{
+    const test = {ul:/^\s*[-*+]\s+(?!\[[ xX]\])/, ol:/^\s*\d+[.)]\s+/, task:/^\s*[-*+]\s+\[[ xX]\]\s+/, quote:/^\s*>\s?/}[kind];
+    const all = lines.filter(l=>l.trim()).every(l=>test.test(l));
+    let n = 0;
+    return lines.map(l=>{
+      if(!l.trim()) return l;
+      const bare = l.replace(blockRe,'$1');
+      if(all) return bare;
+      n++;
+      const ind = bare.match(/^\s*/)[0], txt = bare.slice(ind.length);
+      return ind + ({ul:'- ', ol:n+'. ', task:'- [ ] ', quote:'> '}[kind]) + txt;
+    });
+  });
+}
+function insertBlockMd(block){
+  const v = src.value, s = src.selectionStart, e = src.selectionEnd;
+  const pre = s===0 || v.slice(0,s).endsWith('\n\n') ? '' : (v[s-1]==='\n' ? '\n' : '\n\n');
+  const post = v.slice(e).startsWith('\n\n') ? '' : (v[e]==='\n' ? '\n' : '\n\n');
+  replaceSel(pre+block+post);
+}
+function mdCmd(cmd){
+  switch(cmd){
+    case 'h1': return setBlock('# ');
+    case 'h2': return setBlock('## ');
+    case 'h3': return setBlock('### ');
+    case 'p':  return mapLines(ls=>ls.map(l=>l.replace(blockRe,'$1')));
+    case 'bold': return wrapMd('**','**','粗體文字');
+    case 'italic': return wrapMd('*','*','斜體文字');
+    case 'strike': return wrapMd('~~','~~','刪除文字');
+    case 'code': return wrapMd('`','`','code');
+    case 'ul': case 'ol': case 'task': case 'quote': return toggleLinePrefix(cmd);
+    case 'codeblock': {
+      const sel = src.value.slice(src.selectionStart, src.selectionEnd);
+      return insertBlockMd('```\n' + (sel || '程式碼') + '\n```');
+    }
+    case 'table': return insertBlockMd('| 欄位 A | 欄位 B | 欄位 C |\n| --- | --- | --- |\n| 內容 | 內容 | 內容 |\n| 內容 | 內容 | 內容 |');
+    case 'hr': return insertBlockMd('---');
+    case 'link': return openLink('editor');
+  }
+}
+
+/* ---------- formatting: preview side ---------- */
+let savedRange = null;
+function saveRange(){ const s = getSelection(); if(s.rangeCount && view.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); }
+function restoreRange(){ view.focus(); if(savedRange){ const s=getSelection(); s.removeAllRanges(); s.addRange(savedRange); } }
+document.addEventListener('selectionchange', ()=>{ if(document.activeElement===view) saveRange(); });
+function currentBlock(){ const s=getSelection(); let n=s.anchorNode; while(n && n!==view){ if(n.nodeType===1 && /^(H[1-6]|P|BLOCKQUOTE|PRE|LI)$/.test(n.tagName)) return n; n=n.parentNode; } return null; }
+function viewCmd(cmd){
+  restoreRange();
+  const x = (c,v)=>document.execCommand(c,false,v);
+  const blk = currentBlock();
+  switch(cmd){
+    case 'h1': case 'h2': case 'h3':
+      return x('formatBlock', blk && blk.tagName===cmd.toUpperCase() ? '<p>' : '<'+cmd+'>');
+    case 'p': return x('formatBlock','<p>');
+    case 'bold': return x('bold');
+    case 'italic': return x('italic');
+    case 'strike': return x('strikeThrough');
+    case 'code': {
+      const t = getSelection().toString() || 'code';
+      return x('insertHTML','<code>'+t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</code>&#8203;');
+    }
+    case 'ul': return x('insertUnorderedList');
+    case 'ol': return x('insertOrderedList');
+    case 'task': { x('insertUnorderedList'); return x('insertHTML','<input type="checkbox" contenteditable="false">&nbsp;'); }
+    case 'quote': return x('formatBlock', blk && blk.closest('blockquote') ? '<p>' : '<blockquote>');
+    case 'codeblock': return x('formatBlock','<pre>');
+    case 'table': return x('insertHTML','<table><thead><tr><th>欄位 A</th><th>欄位 B</th><th>欄位 C</th></tr></thead><tbody><tr><td>內容</td><td>內容</td><td>內容</td></tr><tr><td>內容</td><td>內容</td><td>內容</td></tr></tbody></table><p><br></p>');
+    case 'hr': return x('insertHorizontalRule');
+    case 'link': return openLink('view');
+  }
+}
+
+function runCmd(cmd){
+  if(app.dataset.view==='read') setTarget('view');
+  if(app.dataset.view==='source') setTarget('editor');
+  (lastTarget==='view' ? viewCmd : mdCmd)(cmd);
+}
+document.querySelectorAll('.fbtn').forEach(b=>{
+  b.addEventListener('mousedown', e=>e.preventDefault()); // keep selection
+  b.addEventListener('click', ()=>runCmd(b.dataset.cmd));
+});
+
+/* ---------- link popover ---------- */
+const pop = $('#linkPop');
+let linkMode = 'editor', linkSel = null;
+function openLink(mode){
+  linkMode = mode;
+  let text = '';
+  if(mode==='editor'){ linkSel=[src.selectionStart, src.selectionEnd]; text = src.value.slice(...linkSel); }
+  else { text = getSelection().toString(); }
+  $('#linkText').value = text; $('#linkUrl').value = '';
+  const btn = document.querySelector('[data-cmd="link"]').getBoundingClientRect();
+  pop.hidden = false;
+  pop.style.top = (btn.bottom + 6) + 'px';
+  pop.style.left = Math.max(16, Math.min(btn.left, innerWidth - pop.offsetWidth - 16)) + 'px';
+  (text ? $('#linkUrl') : $('#linkText')).focus();
+}
+function closeLink(){ pop.hidden = true; }
+$('#linkCancel').onclick = ()=>{ closeLink(); (linkMode==='editor'?src:view).focus(); };
+$('#linkOk').onclick = ()=>{
+  const text = $('#linkText').value.trim() || $('#linkUrl').value.trim() || '連結';
+  const url = $('#linkUrl').value.trim() || 'https://';
+  closeLink();
+  if(linkMode==='editor'){
+    src.focus(); src.setSelectionRange(...linkSel);
+    const s = linkSel[0], md = '['+text+']('+url+')';
+    replaceSel(md, s+text.length+3, s+md.length-1);
+  } else {
+    restoreRange();
+    const a = document.createElement('a'); a.href = url; a.textContent = text;
+    document.execCommand('insertHTML', false, a.outerHTML);
+  }
+};
+pop.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#linkOk').click(); } if(e.key==='Escape'){ $('#linkCancel').click(); } });
+
+/* ---------- keyboard ---------- */
+document.addEventListener('keydown', e=>{
+  const mod = e.metaKey || e.ctrlKey;
+  if(mod && e.key.toLowerCase()==='s'){ e.preventDefault(); saveMd(); return; }
+  const inDoc = document.activeElement===src || document.activeElement===view;
+  if(!inDoc || !mod) return;
+  const k = e.key.toLowerCase();
+  if(e.altKey && ['1','2','3'].includes(e.code.slice(-1)) && e.code.startsWith('Digit')){ e.preventDefault(); runCmd('h'+e.code.slice(-1)); return; }
+  if(k==='b'){ e.preventDefault(); runCmd('bold'); }
+  else if(k==='i'){ e.preventDefault(); runCmd('italic'); }
+  else if(k==='k'){ e.preventDefault(); runCmd('link'); }
+});
+src.addEventListener('keydown', e=>{
+  if(e.key==='Tab' && !e.metaKey && !e.ctrlKey){ e.preventDefault(); replaceSel('  '); }
+  if(e.key==='Enter' && !e.shiftKey && !e.isComposing){
+    // continue lists
+    const v=src.value, s=src.selectionStart, ls=v.lastIndexOf('\n',s-1)+1, line=v.slice(ls,s);
+    const m = line.match(/^(\s*)([-*+]\s+\[[ xX]\]\s+|[-*+]\s+|(\d+)([.)])\s+|>\s?)/);
+    if(m){
+      e.preventDefault();
+      if(line.trim()===m[0].trim()){ src.setSelectionRange(ls,s); replaceSel(''); return; }
+      let next = m[2];
+      if(m[3]) next = (+m[3]+1) + m[4] + ' ';
+      else if(/\[[xX]\]/.test(next)) next = next.replace(/\[[xX]\]/,'[ ]');
+      replaceSel('\n'+m[1]+next);
+    }
+  }
+});
+
+/* ---------- views ---------- */
+function setView(v){
+  app.dataset.view = v;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===v));
+  store.set('view', v);
+  if(v==='source') setTarget('editor'); else if(v==='read') setTarget('view');
+}
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+
+/* scroll sync (split view) */
+let lock = null;
+function syncScroll(from, to){
+  if(app.dataset.view!=='split' || lock===to) return;
+  lock = from;
+  const r = from.scrollTop / Math.max(1, from.scrollHeight - from.clientHeight);
+  to.scrollTop = r * (to.scrollHeight - to.clientHeight);
+  requestAnimationFrame(()=>{ lock=null; });
+}
+src.addEventListener('scroll', ()=>syncScroll(src, stage));
+stage.addEventListener('scroll', ()=>syncScroll(stage, src));
+
+/* ---------- typesetting ---------- */
+const DEFAULTS = { face:'serif', fs:18, lh:1.85, measure:34, para:0.9, scale:'1.2', align:'left', indent:false, grid:false, theme:'auto' };
+let ts = Object.assign({}, DEFAULTS, store.get('ts')||{});
+const FACES = {
+  serif:'"Noto Serif TC","Songti TC","PMingLiU",serif',
+  sans:'"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif',
+  kai:'"LXGW WenKai TC","Kaiti TC","DFKai-SB",serif'
+};
+function applyTs(){
+  const r = document.documentElement.style, sc = parseFloat(ts.scale);
+  r.setProperty('--read-font', FACES[ts.face]);
+  r.setProperty('--fs', ts.fs+'px');
+  r.setProperty('--lh', ts.lh);
+  r.setProperty('--measure', ts.measure);
+  r.setProperty('--para', ts.para);
+  r.setProperty('--align', ts.align);
+  r.setProperty('--indent', ts.indent ? '2em' : '0em');
+  r.setProperty('--h1', (sc**4).toFixed(4)+'em'); r.setProperty('--h2', (sc**3).toFixed(4)+'em');
+  r.setProperty('--h3', (sc**2).toFixed(4)+'em'); r.setProperty('--h4', sc+'em');
+  view.classList.toggle('grid', !!ts.grid);
+  if(ts.theme==='auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', ts.theme);
+  $('#fs').value=ts.fs; $('#fsOut').textContent = ts.fs+' px';
+  $('#lh').value=ts.lh; $('#lhOut').textContent = (+ts.lh).toFixed(2)+' 倍';
+  $('#measure').value=ts.measure; $('#measureOut').textContent = ts.measure+' 字';
+  $('#para').value=ts.para; $('#paraOut').textContent = (+ts.para).toFixed(1)+' 字高';
+  $('#indent').checked=ts.indent; $('#grid').checked=ts.grid;
+  document.querySelectorAll('.chips').forEach(g=>g.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', String(ts[g.dataset.set])===c.dataset.v)));
+  store.set('ts', ts);
+}
+['fs','lh','measure','para'].forEach(id=>{
+  const el = $('#'+id);
+  el.addEventListener('input', ()=>{ ts[id] = +el.value; applyTs(); });
+  if(id==='measure'){ // show manuscript grid while dragging width
+    el.addEventListener('pointerdown', ()=>view.classList.add('grid'));
+    const off = ()=>view.classList.toggle('grid', !!ts.grid);
+    el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('blur', off);
+  }
+});
+document.querySelectorAll('.chips').forEach(g=>g.addEventListener('click', e=>{
+  const c = e.target.closest('.chip'); if(!c) return; ts[g.dataset.set] = c.dataset.v; applyTs();
+}));
+$('#indent').onchange = e=>{ ts.indent = e.target.checked; applyTs(); };
+$('#grid').onchange = e=>{ ts.grid = e.target.checked; applyTs(); };
+$('#resetBtn').onclick = ()=>{ const th = ts.theme; ts = Object.assign({}, DEFAULTS, {theme:th}); applyTs(); toast('已還原預設排版'); };
+function setPanel(open){
+  app.dataset.panel = open ? 'open' : '';
+  $('#panelBtn').setAttribute('aria-pressed', open);
+  store.set('panel', open);
+}
+$('#panelBtn').onclick = ()=>setPanel(app.dataset.panel!=='open');
+
+/* ---------- open / drop ---------- */
+function loadText(text, name){
+  src.value = text.replace(/\r\n?/g,'\n');
+  if(name) $('#fname').value = name;
+  savedText = src.value;
+  render(); persist(); cursorInfo();
+  stage.scrollTop = 0; src.scrollTop = 0;
+  toast('已開啟 ' + (name || '檔案'));
+}
+function readFile(f){
+  if(!f) return;
+  if(!/\.(md|markdown|mdown|txt)$/i.test(f.name) && f.type && !/^text\//.test(f.type)){ toast('這不是 Markdown 或純文字檔，請選擇 .md 檔'); return; }
+  const r = new FileReader();
+  r.onload = ()=>loadText(r.result, f.name);
+  r.onerror = ()=>toast('讀不到這個檔案，請再試一次');
+  r.readAsText(f);
+}
+$('#openBtn').onclick = ()=>$('#fileInput').click();
+$('#fileInput').onchange = e=>{ readFile(e.target.files[0]); e.target.value=''; };
+let dragDepth = 0;
+addEventListener('dragenter', e=>{ if([...e.dataTransfer.types].includes('Files')){ dragDepth++; $('#drop').hidden=false; } });
+addEventListener('dragleave', ()=>{ if(--dragDepth<=0){ dragDepth=0; $('#drop').hidden=true; } });
+addEventListener('dragover', e=>e.preventDefault());
+addEventListener('drop', e=>{ e.preventDefault(); dragDepth=0; $('#drop').hidden=true; readFile(e.dataTransfer.files[0]); });
+
+/* ---------- save / copy / export ---------- */
+let downloads = null;
+const standalone = !(window.claude && typeof window.claude.use === 'function');
+function mdName(){ let n = $('#fname').value.trim() || '未命名.md'; if(!/\.(md|markdown)$/i.test(n)) n = n.replace(/\.[^.]*$/,'') + '.md'; return n; }
+function blobSave(filename, data, type){
+  const url = URL.createObjectURL(new Blob([data], {type}));
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+async function saveMd(){
+  if(standalone){ blobSave(mdName(), src.value, 'text/markdown;charset=utf-8'); savedText = src.value; stats(); toast('已下載 ' + mdName()); return; }
+  if(!downloads){ return copyMd('無法在這裡下載檔案，已改為複製 Markdown'); }
+  try{
+    await downloads.save({ filename: mdName(), data: src.value });
+    savedText = src.value; stats(); toast('已下載 ' + mdName());
+  }catch(err){
+    if(err && err.code==='declined') return;
+    if(err && err.code==='rate_limited'){ toast('下載視窗已經開著'); return; }
+    copyMd('無法下載，已改為複製 Markdown');
+  }
+}
+async function copyMd(msg){
+  try{ await navigator.clipboard.writeText(src.value); toast(msg || '已複製 Markdown'); }
+  catch(e){ setView(app.dataset.view==='read' ? 'split' : app.dataset.view); src.focus(); src.select(); toast('已選取全部內容，按 Ctrl/⌘ + C 複製'); }
+}
+$('#saveBtn').onclick = saveMd;
+$('#copyBtn').onclick = ()=>copyMd();
+
+function exportHtml(){
+  const cs = getComputedStyle(document.documentElement);
+  const v = n => cs.getPropertyValue(n).trim();
+  const title = (view.querySelector('h1')||{}).textContent || mdName().replace(/\.\w+$/,'');
+  const css = `body{margin:0;background:#fff;color:#1C1F25}
+main{font-family:${FACES[ts.face]};font-size:${ts.fs}px;line-height:${ts.lh};max-width:${ts.measure}em;margin:0 auto;padding:64px 20px;text-align:${ts.align}}
+p{margin:0 0 ${ts.para}em;text-indent:${ts.indent?'2em':'0'}}
+h1,h2,h3,h4{line-height:1.3;margin:1.4em 0 .5em}h1{font-size:${v('--h1')};margin-top:0}h2{font-size:${v('--h2')};padding-bottom:.25em;border-bottom:1px solid #E6E9ED}h3{font-size:${v('--h3')}}h4{font-size:${v('--h4')}}
+a{color:#1F6F78}ul,ol{padding-left:1.6em;margin:0 0 ${ts.para}em}li>p{margin:0}li:has(>input[type=checkbox]){list-style:none;margin-left:-1.4em}
+blockquote{margin:0 0 ${ts.para}em;padding-left:1em;border-left:3px solid #1F6F78;color:#5F6673}blockquote p{text-indent:0}
+code{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.84em;background:#F1F3F5;padding:.12em .35em;border-radius:4px}
+pre{background:#F1F3F5;padding:1em 1.2em;border-radius:6px;overflow-x:auto;font-size:.8em}pre code{padding:0;background:none;font-size:1em}
+table{border-collapse:collapse;display:block;overflow-x:auto;font-size:.9em}th,td{border:1px solid #D5D9E0;padding:.4em .8em;text-align:left}th{background:#F1F3F5}
+hr{border:0;height:1px;background:#D5D9E0;margin:2em 0}img{max-width:100%}`;
+  const body = mdToHtml(src.value);
+  const esc = s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  return `<!doctype html>\n<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&family=LXGW+WenKai+TC:wght@400;700&family=JetBrains+Mono&display=swap">\n<style>${css}</style></head><body><main>\n${body}\n</main></body></html>`;
+}
+$('#exportBtn').onclick = async ()=>{
+  const name = mdName().replace(/\.(md|markdown)$/i,'.html');
+  if(standalone){ blobSave(name, exportHtml(), 'text/html;charset=utf-8'); toast('已匯出 ' + name); return; }
+  if(!downloads){ toast('這個檢視無法下載檔案'); return; }
+  try{ await downloads.save({ filename:name, data: exportHtml() }); toast('已匯出 ' + name); }
+  catch(err){ if(err && err.code!=='declined') toast('匯出失敗，請再試一次'); }
+};
+
+/* ---------- misc ---------- */
+let toastTimer;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'), 2200); }
+$('#fname').addEventListener('input', persist);
+
+/* ---------- boot ---------- */
+const draft = store.get('doc');
+if(draft && typeof draft.text==='string'){ src.value = draft.text; if(draft.name) $('#fname').value = draft.name; $('#stSaved').textContent='已載入上次的暫存'; }
+else { src.value = SAMPLE; $('#stSaved').textContent='範例文件'; }
+savedText = src.value;
+const narrow = matchMedia('(max-width:760px)').matches;
+setView(store.get('view') || (narrow ? 'read' : 'split'));
+if(narrow && app.dataset.view==='split') setView('read');
+setPanel(store.get('panel') ?? !narrow);
+applyTs(); render(); cursorInfo();
+setTarget(app.dataset.view==='read' ? 'view' : 'editor');
+
+if(window.claude && typeof claude.use==='function'){
+  claude.use('downloads').then(d=>{ downloads = d; if(!d){ $('#saveBtn').lastChild.textContent='複製 Markdown'; $('#exportBtn').hidden=true; } });
+}
+})();
+</script>
+
+</body>
+</html>
